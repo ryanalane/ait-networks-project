@@ -12,8 +12,6 @@ def enumerate_motif_instances( G, k ):
 		while len(vertex_extension) != 0:
 			node = vertex_extension.pop()
 			node_neighbors = G.neighbors(node)
-			# To prevent set.pop() from popping nodes in order
-			random.shuffle(node_neighbors)
 
 			exclusive_neighborhood = set([neighbor for neighbor in node_neighbors if neighbor > vertex])
 
@@ -35,11 +33,46 @@ def enumerate_motif_instances( G, k ):
 	for vertex in vertexes:
 
 		vertex_neighbors = G.neighbors(vertex)
-		# To prevent set.pop() from popping nodes in order
-		random.shuffle(vertex_neighbors)
 
 		vertex_extension = set([n for n in vertex_neighbors if n > vertex])
 
 		extend_subgraph( set([vertex]), vertex_extension, vertex )
 
 	return motif_instances
+
+def randomize_networks(G, N):
+	randomized_networks = []
+
+	for n in range(N):
+
+		randomized = G.copy()
+
+		existing_edges = set(randomized.edges())
+
+		# Sorted to ensure that nx.graph handles tuple appendage correctly (for undirected networks only)
+		swap_edges = lambda edge_1, edge_2: [tuple(sorted([edge_1[0], edge_2[1]])), tuple(sorted([edge_2[0], edge_1[1]]))] 
+
+		sample_mixing_factor = 10 # Sample Mixing factor
+
+		for i in range( sample_mixing_factor * len(randomized.edges()) ):
+
+			random_edges = random.sample(existing_edges, 2)
+			potential_edges = swap_edges(random_edges[0], random_edges[1]) 
+
+			edge_1 = potential_edges[0]
+			edge_2 = potential_edges[1]	
+
+			valid_swap = (edge_1[0] != edge_1[1] and edge_2[0] != edge_2[1] and edge_1 not in existing_edges and edge_2 not in existing_edges)
+
+			if valid_swap:
+				existing_edges.remove(random_edges[0])
+				existing_edges.remove(random_edges[1])
+				existing_edges.add(edge_1)
+				existing_edges.add(edge_2)
+
+		randomized.remove_edges_from(randomized.edges())
+		randomized.add_edges_from(existing_edges)
+
+		randomized_networks.append(randomized)
+
+	return randomized_networks
