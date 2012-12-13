@@ -39,66 +39,71 @@ def randomize_networks(G, N):
 
 	return randomized_networks
 
-def calculate_motif_concentrations(G, k):
+def enumerate_motif_instances( G, k ):
 
-	def enumerate_motif_instances( G, k ):
+	def extend_subgraph( vertex_subgraph, vertex_extension, vertex ):
 
-		def extend_subgraph( vertex_subgraph, vertex_extension, vertex ):
-
-			if len(vertex_subgraph) == k:
-				motif_instances.append(G.subgraph(vertex_subgraph))
-				return
-
-			while len(vertex_extension) != 0:
-				node = vertex_extension.pop()
-				node_neighbors = G.neighbors(node)
-
-				exclusive_neighborhood = set([neighbor for neighbor in node_neighbors if neighbor > vertex])
-
-				subgraph_neighbors = set()
-				for n in vertex_subgraph: 
-					[subgraph_neighbors.add(neighbor) for neighbor in G.neighbors(n)]
-
-				exclusive_neighborhood -= vertex_subgraph.union(subgraph_neighbors)
-
-				new_vertex_extension = vertex_extension.union(exclusive_neighborhood)
-
-				extend_subgraph(vertex_subgraph.union(set([node])), new_vertex_extension, vertex)
-
+		if len(vertex_subgraph) == k:
+			motif_instances.append(G.subgraph(vertex_subgraph))
 			return
 
-		vertexes = G.nodes()
-		motif_instances = []
+		while len(vertex_extension) != 0:
+			node = vertex_extension.pop()
+			node_neighbors = G.neighbors(node)
 
-		for vertex in vertexes:
+			exclusive_neighborhood = set([neighbor for neighbor in node_neighbors if neighbor > vertex])
 
-			vertex_neighbors = G.neighbors(vertex)
+			subgraph_neighbors = set()
+			for n in vertex_subgraph: 
+				[subgraph_neighbors.add(neighbor) for neighbor in G.neighbors(n)]
 
-			vertex_extension = set([n for n in vertex_neighbors if n > vertex])
+			exclusive_neighborhood -= vertex_subgraph.union(subgraph_neighbors)
 
-			extend_subgraph( set([vertex]), vertex_extension, vertex )
+			new_vertex_extension = vertex_extension.union(exclusive_neighborhood)
 
-		return motif_instances
+			extend_subgraph(vertex_subgraph.union(set([node])), new_vertex_extension, vertex)
 
+		return
 
-	motif_instances = enumerate_motif_instances(G,k)
-	motif_types = [] 
+	vertexes = G.nodes()
+	motif_instances = []
 
-	# Calculating motif frequencies
-	motif_type_frequencies = defaultdict(int) 
+	for vertex in vertexes:
 
-	for i, instance in enumerate(motif_instances):
+		vertex_neighbors = G.neighbors(vertex)
+
+		vertex_extension = set([n for n in vertex_neighbors if n > vertex])
+
+		extend_subgraph( set([vertex]), vertex_extension, vertex )
+
+	return motif_instances
+
+def group_motif_types(motif_instances):
+
+	motif_types = []
+	for instance in motif_instances:
 
 		type_already_exists = False	
-		for index, type in enumerate(motif_types):
+		for type in motif_types:
 			if nx.is_isomorphic(type, instance):
 				type_already_exists = True
-				motif_type_frequencies[index] += 1
 				break
 
 		if type_already_exists == False:
 			motif_types.append(instance)
-			motif_type_frequencies[len(motif_types)-1] += 1
+
+	return motif_types
+
+def calculate_motif_concentrations(motif_instances, motif_types):
+
+	# Calculate motif frequencies
+	motif_type_frequencies = defaultdict(int) 
+
+	for instance in motif_instances:
+		for index, type in enumerate(motif_types):
+
+			if nx.is_isomorphic(type, instance):
+				motif_type_frequencies[index] += 1
 
 	# Calculating motif concentrations for each motif_type
 	total_motif_frequencies = len(motif_instances)		
